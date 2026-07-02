@@ -333,18 +333,18 @@
             }
 
             try {
-                let rawUrl = `https://raw.githubusercontent.com/${OWNER}/${REPO}/main/${FILE_PATH}?t=${Date.now()}`;
-                let response = await fetch(rawUrl);
-                
-                if (response.ok) {
-                    localPostsArray = await response.json();
-                } else if (token) {
-                    let apiUrl = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${FILE_PATH}?t=${Date.now()}`;
-                    let apiRes = await fetch(apiUrl, { headers: { 'Authorization': `Bearer ${token}` } });
-                    if (apiRes.ok) {
-                        let fileData = await apiRes.json();
-                        localPostsArray = JSON.parse(decodeBase64UTF8(fileData.content));
-                    }
+                // Всегда делаем запрос через API с авторизацией и timestamp, чтобы обойти кэширование GitHub CDN
+                let apiUrl = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${FILE_PATH}?t=${Date.now()}`;
+                let headers = {};
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+
+                let apiRes = await fetch(apiUrl, { headers: headers });
+                if (apiRes.ok) {
+                    let fileData = await apiRes.json();
+                    localPostsArray = JSON.parse(decodeBase64UTF8(fileData.content));
+                } else {
+                    // Если файла ещё нет на сервере
+                    localPostsArray = [];
                 }
 
                 statusBadge.innerText = token ? "✓ REGISTRY SYNC OPERATIONAL" : "Awaiting token credentials...";
@@ -445,7 +445,7 @@
             const url = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${FILE_PATH}`;
             let sha = '';
             
-            let getRes = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+            let getRes = await fetch(`${url}?t=${Date.now()}`, { headers: { 'Authorization': `Bearer ${token}` } });
             if (getRes.ok) {
                 const getData = await getRes.json();
                 sha = getData.sha;
@@ -508,7 +508,12 @@
                 await pushToGitHub(nextPosts, commitMsg);
                 alert('Success! Content pushed.');
                 resetForm();
-                await loadPosts();
+                
+                // Делаем небольшую паузу, чтобы GitHub успел обновить SHA у себя в базе перед перечиткой
+                setTimeout(async () => {
+                    await loadPosts();
+                }, 1000);
+
             } catch (err) {
                 alert(`API Error: ${err.message}`);
             } finally {
@@ -526,7 +531,10 @@
                 await pushToGitHub(nextPosts, `Delete index ${index}`);
                 alert('Deleted.');
                 if (editIndex === index) resetForm();
-                await loadPosts();
+                
+                setTimeout(async () => {
+                    await loadPosts();
+                }, 1000);
             } catch (err) {
                 alert(`Error: ${err.message}`);
             }
