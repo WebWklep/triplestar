@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Arts — Archive</title>
     <style>
-        /* Стили полностью скопированы с эстетики референса */
+        /* Minimalist monospace layout according to the aesthetic reference */
         body {
             font-family: 'Courier New', Courier, monospace;
             background-color: #ffffff;
@@ -79,7 +79,7 @@
             text-align: justify;
         }
 
-        /* Скрытый вход в админку */
+        /* Subtle admin trigger at the bottom */
         .admin-trigger {
             margin-top: 40px;
             font-size: 10px;
@@ -92,7 +92,7 @@
             color: #000;
         }
 
-        /* Панель управления */
+        /* Admin Dashboard overlay */
         #admin-panel {
             display: none;
             position: fixed;
@@ -144,6 +144,20 @@
             background: #fff;
         }
 
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 12px;
+            text-transform: uppercase;
+            cursor: pointer;
+        }
+
+        .checkbox-container input {
+            width: auto;
+            cursor: pointer;
+        }
+
         .admin-form button, .action-btn {
             background: #000;
             color: #fff;
@@ -160,7 +174,7 @@
             background: #333;
         }
 
-        /* Управление существующими постами */
+        /* Post Management panel */
         .admin-manage {
             border-left: 1px solid #eee;
             padding-left: 20px;
@@ -184,12 +198,25 @@
             gap: 10px;
         }
 
+        .manage-item-meta {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            flex-grow: 1;
+            max-width: 200px;
+        }
+
         .manage-item-title {
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            flex-grow: 1;
-            max-width: 200px;
+        }
+
+        .status-badge {
+            font-size: 9px;
+            color: #999;
+            text-transform: uppercase;
+            margin-top: 2px;
         }
 
         .manage-buttons {
@@ -218,9 +245,8 @@
 </head>
 <body>
 
-    <!-- Сюда статьи будут выводиться автоматически -->
     <div class="content-container" id="articles-list">
-        <p id="loading-text">Синхронизация с архивом GitHub...</p>
+        <p id="loading-text">Synchronizing with GitHub archive...</p>
     </div>
 
     <footer>
@@ -235,31 +261,34 @@
         </div>
     </footer>
 
-    <!-- Панель админа -->
     <div id="admin-panel">
         <div style="max-width: 800px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center;">
-            <button id="cancel-edit-header-btn" style="background:#fff; color:#ff4d4d; border: 1px solid #ff4d4d; font-family: monospace; padding: 8px 16px; cursor:pointer; display:none;" onclick="resetForm()">ОТМЕНИТЬ РЕДАКТИРОВАНИЕ</button>
+            <button id="cancel-edit-header-btn" style="background:#fff; color:#ff4d4d; border: 1px solid #ff4d4d; font-family: monospace; padding: 8px 16px; cursor:pointer; display:none;" onclick="resetForm()">CANCEL EDIT MODE</button>
             <span style="flex-grow: 1;"></span>
-            <button style="background:#eee; color:#000; border: 1px solid #ccc; font-family: monospace; padding: 8px 16px; cursor:pointer;" onclick="toggleAdmin()">ЗАКРЫТЬ АДМИНКУ</button>
+            <button style="background:#eee; color:#000; border: 1px solid #ccc; font-family: monospace; padding: 8px 16px; cursor:pointer;" onclick="toggleAdmin()">CLOSE DASHBOARD</button>
         </div>
         
         <div class="admin-layout">
-            <!-- Левая колонка: Форма добавления/редактирования -->
             <div class="admin-form">
-                <h3 id="form-mode-title">[ Добавить в архив ]</h3>
+                <h3 id="form-mode-title">[ Append to Archive ]</h3>
                 <input type="password" id="gh-token" placeholder="GitHub Personal Access Token">
-                <input type="text" id="post-title" placeholder="НАЗВАНИЕ (SERIES 01: BIO POP)">
-                <input type="text" id="post-date" placeholder="ДАТА И СТАТУС (THE ORIGIN, 2025)">
-                <input type="text" id="post-img" placeholder="Имя файла картинки (photo.png)">
-                <textarea id="post-text" rows="8" placeholder="Текст статьи..."></textarea>
-                <button id="save-btn" onclick="savePost()">Опубликовать</button>
+                <input type="text" id="post-title" placeholder="TITLE (e.g. SERIES 01: BIO POP)">
+                <input type="text" id="post-date" placeholder="DATE & STATUS (e.g. THE ORIGIN, 2025)">
+                <input type="text" id="post-img" placeholder="Image asset filename (e.g. asset.png)">
+                <textarea id="post-text" rows="8" placeholder="Editorial text body content..."></textarea>
+                
+                <label class="checkbox-container">
+                    <input type="checkbox" id="post-draft">
+                    Save as Draft (Hide from main page)
+                </label>
+                
+                <button id="save-btn" onclick="savePost()">Publish</button>
             </div>
 
-            <!-- Правая колонка: Управление существующими материалами -->
             <div class="admin-manage">
-                <h3>[ Управление постами ]</h3>
+                <h3>[ Archive Management ]</h3>
                 <div id="manage-list">
-                    <p style="font-size: 11px; color: #999;">Загрузка списка...</p>
+                    <p style="font-size: 11px; color: #999;">Initializing registry interface...</p>
                 </div>
             </div>
         </div>
@@ -271,9 +300,9 @@
         const FILE_PATH = 'data.json';
         
         let localPostsArray = [];
-        let editIndex = null; // Индекс редактируемого поста. Если null — мы в режиме создания.
+        let editIndex = null;
 
-        // Автоматическая загрузка контента на сайт и в админку
+        // Fetch schema matrix from repository source
         async function loadPosts() {
             const listContainer = document.getElementById('articles-list');
             const manageContainer = document.getElementById('manage-list');
@@ -281,200 +310,33 @@
                 const response = await fetch(`https://raw.githubusercontent.com/${OWNER}/${REPO}/main/${FILE_PATH}?t=${Date.now()}`);
                 localPostsArray = await response.json();
                 
-                // 1. Рендерим главную страницу
+                // 1. Process and append elements to public user interface layout view (ignoring draft flags)
+                const visiblePosts = localPostsArray.filter(post => !post.isDraft);
+                
+                if (visiblePosts.length === 0) {
+                    listContainer.innerHTML = '<p style="font-size:12px; color:#999; text-align:center; margin-top:40px;">Archive index is empty or entries are currently set to draft.</p>';
+                } else {
+                    listContainer.innerHTML = '';
+                    visiblePosts.forEach(post => {
+                        const item = document.createElement('div');
+                        item.className = 'series-item';
+                        item.innerHTML = `
+                            <div class="series-header">
+                                <span>${post.title}</span>
+                                <span>${post.date}</span>
+                            </div>
+                            ${post.img ? `
+                            <div class="media-container">
+                                <img src="${post.img}" alt="${post.title}">
+                            </div>` : ''}
+                            <div class="description">${post.text}</div>
+                        `;
+                        listContainer.appendChild(item);
+                    });
+                }
+
+                // 2. Generate systematic inventory checklist elements inside dashboard
                 if (localPostsArray.length === 0) {
-                    listContainer.innerHTML = '<p style="font-size:12px; color:#999; text-align:center; margin-top:40px;">Архив пуст. Используйте admin login для добавления контента.</p>';
-                    manageContainer.innerHTML = '<p style="font-size:11px; color:#999;">Нет постов.</p>';
+                    manageContainer.innerHTML = '<p style="font-size:11px; color:#999;">No entries found in dataset.</p>';
                     return;
                 }
-
-                listContainer.innerHTML = '';
-                localPostsArray.forEach(post => {
-                    const item = document.createElement('div');
-                    item.className = 'series-item';
-                    item.innerHTML = `
-                        <div class="series-header">
-                            <span>${post.title}</span>
-                            <span>${post.date}</span>
-                        </div>
-                        ${post.img ? `
-                        <div class="media-container">
-                            <img src="${post.img}" alt="${post.title}">
-                        </div>` : ''}
-                        <div class="description">${post.text}</div>
-                    `;
-                    listContainer.appendChild(item);
-                });
-
-                // 2. Рендерим список в админке для удаления и редактирования
-                manageContainer.innerHTML = '';
-                localPostsArray.forEach((post, index) => {
-                    const mItem = document.createElement('div');
-                    mItem.className = 'manage-item';
-                    mItem.innerHTML = `
-                        <span class="manage-item-title">${post.title || '[Без названия]'}</span>
-                        <div class="manage-buttons">
-                            <button class="action-btn edit-btn" onclick="startEdit(${index})">Редакт</button>
-                            <button class="action-btn delete-btn" onclick="deletePost(${index})">Удалить</button>
-                        </div>
-                    `;
-                    manageContainer.appendChild(mItem);
-                });
-
-            } catch (err) {
-                listContainer.innerHTML = '<p style="font-size:12px; color:red;">Ошибка обновления ленты.</p>';
-                console.error(err);
-            }
-        }
-
-        function toggleAdmin() {
-            const panel = document.getElementById('admin-panel');
-            panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
-        }
-
-        // Включение режима редактирования
-        function startEdit(index) {
-            editIndex = index;
-            const post = localPostsArray[index];
-            
-            // Заполняем поля формы данными выбранного поста
-            document.getElementById('post-title').value = post.title || '';
-            document.getElementById('post-date').value = post.date || '';
-            document.getElementById('post-img').value = post.img || '';
-            document.getElementById('post-text').value = post.text || '';
-            
-            // Меняем заголовки и кнопки интерфейса на режим редактирования
-            document.getElementById('form-mode-title').innerText = `[ Редактирование поста #${index + 1} ]`;
-            document.getElementById('save-btn').innerText = 'Сохранить изменения';
-            document.getElementById('cancel-edit-header-btn').style.display = 'inline-block';
-            
-            // Скроллим форму вверх на мобилках
-            document.querySelector('.admin-form').scrollIntoView({ behavior: 'smooth' });
-        }
-
-        // Сброс формы в режим создания нового поста
-        function resetForm() {
-            editIndex = null;
-            document.getElementById('post-title').value = '';
-            document.getElementById('post-date').value = '';
-            document.getElementById('post-img').value = '';
-            document.getElementById('post-text').value = '';
-            
-            document.getElementById('form-mode-title').innerText = '[ Добавить в архив ]';
-            document.getElementById('save-btn').innerText = 'Опубликовать';
-            document.getElementById('cancel-edit-header-btn').style.display = 'none';
-        }
-
-        // Общая функция отправки обновленного массива на GitHub
-        async function pushToGitHub(token, updatedArray, commitMessage) {
-            const url = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${FILE_PATH}`;
-            
-            const getRes = await fetch(url, {
-                headers: { 'Authorization': `token ${token}` }
-            });
-            
-            let sha = '';
-            if (getRes.ok) {
-                const getData = await getRes.json();
-                sha = getData.sha;
-            } else {
-                throw new Error('Не удалось синхронизировать версию с GitHub.');
-            }
-
-            const updatedContent = btoa(unescape(encodeURIComponent(JSON.stringify(updatedArray, null, 2))));
-            
-            const putRes = await fetch(url, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `token ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    message: commitMessage,
-                    content: updatedContent,
-                    sha: sha
-                })
-            });
-
-            return putRes.ok;
-        }
-
-        // Сохранение материала (И создание нового, и изменение старого)
-        async function savePost() {
-            const token = document.getElementById('gh-token').value;
-            const title = document.getElementById('post-title').value;
-            const date = document.getElementById('post-date').value;
-            const img = document.getElementById('post-img').value;
-            const text = document.getElementById('post-text').value;
-            const btn = document.getElementById('save-btn');
-
-            if (!token || !title || !text) {
-                return alert('Поля Токен, Название и Текст обязательны для заполнения!');
-            }
-
-            btn.disabled = true;
-            btn.innerText = 'Сохранение...';
-
-            try {
-                let nextPosts = [];
-                let commitMsg = '';
-
-                if (editIndex !== null) {
-                    // Режим РЕДАКТИРОВАНИЯ: меняем данные конкретного элемента в массиве
-                    nextPosts = [...localPostsArray];
-                    nextPosts[editIndex] = { title, date, img, text };
-                    commitMsg = `Archive Edit: ${title}`;
-                } else {
-                    // Режим СОЗДАНИЯ нового поста: пушим на самый верх
-                    const newPost = { title, date, img, text };
-                    nextPosts = [newPost, ...localPostsArray];
-                    commitMsg = `Archive Add: ${title}`;
-                }
-
-                const success = await pushToGitHub(token, nextPosts, commitMsg);
-
-                if (success) {
-                    alert('Успешно сохранено! Изменения отобразятся на сайте в течение минуты.');
-                    resetForm();
-                    loadPosts();
-                } else {
-                    alert('Ошибка прав доступа. Проверьте токен GitHub.');
-                }
-            } catch (err) {
-                alert(err.message || 'Сбой сети при сохранении.');
-                console.error(err);
-            } finally {
-                btn.disabled = false;
-                btn.innerText = editIndex !== null ? 'Сохранить изменения' : 'Опубликовать';
-            }
-        }
-
-        // Удаление материала по индексу
-        async function deletePost(index) {
-            const token = prompt('Для подтверждения удаления введите ваш GitHub токен:');
-            if (!token) return;
-
-            if (!confirm(`Вы уверены, что хотите полностью удалить пост "${localPostsArray[index].title}"?`)) return;
-
-            try {
-                const nextPosts = localPostsArray.filter((_, i) => i !== index);
-                const success = await pushToGitHub(token, nextPosts, `Archive Delete: index ${index}`);
-
-                if (success) {
-                    alert('Пост удален! Изменения обновятся в течение минуты.');
-                    if (editIndex === index) resetForm(); // Если удалили то, что редактировали — сбрасываем форму
-                    loadPosts();
-                } else {
-                    alert('Ошибка удаления. Проверьте токен.');
-                }
-            } catch (err) {
-                alert(err.message || 'Сбой сети при удалении.');
-                console.error(err);
-            }
-        }
-
-        // Старт скрипта
-        loadPosts();
-    </script>
-</body>
-</html>
