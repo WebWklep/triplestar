@@ -54,13 +54,16 @@
             background-color: #ffffff;
             color: #000000;
             margin: 0;
-            padding: 120px 20px 40px 20px; /* Отступ сверху под логотип */
+            padding: 140px 20px 60px 20px; /* Отступы под верхнее лого и нижнее сердечко */
             display: flex;
             flex-direction: column;
             align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+            position: relative;
         }
 
-        /* Маленькое лого в левом верхнем углу */
+        /* Мелкое оригинальное лого в левом верхнем углу */
         .site-logo-container {
             position: absolute;
             top: 30px;
@@ -71,36 +74,15 @@
         }
 
         .site-logo-container img {
-            width: 50px; /* Мелкий размер сбоку */
+            width: 50px; /* Аккуратный мелкий размер */
             height: auto;
             display: block;
-            /* Магия фильтров: инвертируем черный фон в белый, а синий спрей — в монохром */
-            filter: invert(1) grayscale(1) contrast(1.2); 
+            /* Никакой инверсии цвета, оставляем оригинальный синий */
         }
 
-        header, footer, .content-container {
+        .content-container {
             width: 100%;
             max-width: 800px;
-        }
-
-        .nav-links {
-            display: flex;
-            justify-content: space-between;
-            font-size: 11px;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            margin-top: 60px;
-            border-top: 1px solid #eee;
-            padding-top: 20px;
-        }
-
-        .nav-links a {
-            color: #000000;
-            text-decoration: none;
-        }
-
-        .nav-links a:hover {
-            text-decoration: underline;
         }
 
         .series-item {
@@ -140,18 +122,27 @@
             text-align: justify;
         }
 
+        /* Админ-логин в правом нижнем углу */
         .admin-trigger {
-            margin-top: 40px;
-            font-size: 10px;
-            color: #e0e0e0;
+            position: fixed;
+            bottom: 25px;
+            right: 30px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            font-weight: bold;
+            color: #d0d0d0;
             cursor: pointer;
             text-decoration: none;
-            transition: color 0.2s;
+            transition: color 0.2s, transform 0.2s;
+            user-select: none;
+            z-index: 999;
         }
         .admin-trigger:hover {
-            color: #000;
+            color: #000000;
+            transform: scale(1.1);
         }
 
+        /* Панель управления */
         #admin-panel {
             display: none;
             position: fixed;
@@ -181,6 +172,10 @@
             .site-logo-container {
                 left: 20px;
                 top: 20px;
+            }
+            .admin-trigger {
+                bottom: 20px;
+                right: 20px;
             }
             .admin-layout {
                 grid-template-columns: 1fr;
@@ -316,31 +311,26 @@
 </head>
 <body>
 
+    <!-- Заставка (Стартовая страница) -->
     <div id="splash-screen" onclick="exitSplash()">
         <img src="3star_big_spray.png" alt="TripleStar Core">
         <button class="enter-btn">Enter Archive</button>
     </div>
 
+    <!-- Мелкое лого сбоку в архиве (Без инверсии цвета) -->
     <div class="site-logo-container" onclick="showSplash()">
         <img src="3star_big_spray.png" alt="Logo">
     </div>
 
+    <!-- Главный контейнер архива -->
     <div class="content-container" id="articles-list">
         <p>Connecting to archive nodes...</p>
     </div>
 
-    <footer>
-        <div class="nav-links">
-            <a href="#">Notifications</a>
-            <a href="#">Privacy</a>
-            <a href="#">Terms</a>
-            <a href="#">Help</a>
-        </div>
-        <div style="text-align: center;">
-            <span class="admin-trigger" onclick="toggleAdmin()">• admin login</span>
-        </div>
-    </footer>
+    <!-- Кнопка админки в правом нижнем углу -->
+    <span class="admin-trigger" onclick="toggleAdmin()">&lt;3</span>
 
+    <!-- Панель управления (Dashboard) -->
     <div id="admin-panel">
         <div style="max-width: 800px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center;">
             <button id="cancel-edit-header-btn" style="background:#fff; color:#ff4d4d; border: 1px solid #ff4d4d; font-family: monospace; padding: 8px 16px; cursor:pointer; display:none;" onclick="resetForm()">CANCEL EDIT MODE</button>
@@ -382,7 +372,6 @@
         let editIndex = null;
         let token = localStorage.getItem('gh_stored_token') || '';
 
-        // Логика переключения экранов заставки
         function exitSplash() {
             const splash = document.getElementById('splash-screen');
             splash.style.opacity = '0';
