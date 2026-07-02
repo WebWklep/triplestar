@@ -144,7 +144,7 @@
             background: #fff;
         }
 
-        .admin-form button, .delete-btn {
+        .admin-form button, .action-btn {
             background: #000;
             color: #fff;
             padding: 14px;
@@ -181,19 +181,35 @@
             padding: 10px 0;
             border-bottom: 1px solid #f5f5f5;
             font-size: 12px;
+            gap: 10px;
         }
 
-        .manage-item span {
+        .manage-item-title {
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            max-width: 250px;
+            flex-grow: 1;
+            max-width: 200px;
         }
 
-        .delete-btn {
-            background: #ff4d4d;
+        .manage-buttons {
+            display: flex;
+            gap: 5px;
+            flex-shrink: 0;
+        }
+
+        .action-btn {
             padding: 6px 10px;
             font-size: 10px;
+        }
+        .edit-btn {
+            background: #2196F3;
+        }
+        .edit-btn:hover {
+            background: #0b7dda;
+        }
+        .delete-btn {
+            background: #ff4d4d;
         }
         .delete-btn:hover {
             background: #cc0000;
@@ -221,14 +237,16 @@
 
     <!-- Панель админа -->
     <div id="admin-panel">
-        <div style="max-width: 800px; margin: 0 auto; text-align: right;">
+        <div style="max-width: 800px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center;">
+            <button id="cancel-edit-header-btn" style="background:#fff; color:#ff4d4d; border: 1px solid #ff4d4d; font-family: monospace; padding: 8px 16px; cursor:pointer; display:none;" onclick="resetForm()">ОТМЕНИТЬ РЕДАКТИРОВАНИЕ</button>
+            <span style="flex-grow: 1;"></span>
             <button style="background:#eee; color:#000; border: 1px solid #ccc; font-family: monospace; padding: 8px 16px; cursor:pointer;" onclick="toggleAdmin()">ЗАКРЫТЬ АДМИНКУ</button>
         </div>
         
         <div class="admin-layout">
-            <!-- Левая колонка: Форма добавления -->
+            <!-- Левая колонка: Форма добавления/редактирования -->
             <div class="admin-form">
-                <h3>[ Добавить в архив ]</h3>
+                <h3 id="form-mode-title">[ Добавить в архив ]</h3>
                 <input type="password" id="gh-token" placeholder="GitHub Personal Access Token">
                 <input type="text" id="post-title" placeholder="НАЗВАНИЕ (SERIES 01: BIO POP)">
                 <input type="text" id="post-date" placeholder="ДАТА И СТАТУС (THE ORIGIN, 2025)">
@@ -241,7 +259,7 @@
             <div class="admin-manage">
                 <h3>[ Управление постами ]</h3>
                 <div id="manage-list">
-                    <p style="font-size: 11px; color: #999;">Загрузка списка для удаления...</p>
+                    <p style="font-size: 11px; color: #999;">Загрузка списка...</p>
                 </div>
             </div>
         </div>
@@ -252,8 +270,8 @@
         const REPO = 'TripleStar';
         const FILE_PATH = 'data.json';
         
-        // Глобальный массив для хранения загруженных постов в памяти сайта
         let localPostsArray = [];
+        let editIndex = null; // Индекс редактируемого поста. Если null — мы в режиме создания.
 
         // Автоматическая загрузка контента на сайт и в админку
         async function loadPosts() {
@@ -266,7 +284,7 @@
                 // 1. Рендерим главную страницу
                 if (localPostsArray.length === 0) {
                     listContainer.innerHTML = '<p style="font-size:12px; color:#999; text-align:center; margin-top:40px;">Архив пуст. Используйте admin login для добавления контента.</p>';
-                    manageContainer.innerHTML = '<p style="font-size:11px; color:#999;">Нет постов для удаления.</p>';
+                    manageContainer.innerHTML = '<p style="font-size:11px; color:#999;">Нет постов.</p>';
                     return;
                 }
 
@@ -288,14 +306,17 @@
                     listContainer.appendChild(item);
                 });
 
-                // 2. Рендерим список в админке для удаления
+                // 2. Рендерим список в админке для удаления и редактирования
                 manageContainer.innerHTML = '';
                 localPostsArray.forEach((post, index) => {
                     const mItem = document.createElement('div');
                     mItem.className = 'manage-item';
                     mItem.innerHTML = `
-                        <span>${post.title || '[Без названия]'}</span>
-                        <button class="delete-btn" onclick="deletePost(${index})">Удалить</button>
+                        <span class="manage-item-title">${post.title || '[Без названия]'}</span>
+                        <div class="manage-buttons">
+                            <button class="action-btn edit-btn" onclick="startEdit(${index})">Редакт</button>
+                            <button class="action-btn delete-btn" onclick="deletePost(${index})">Удалить</button>
+                        </div>
                     `;
                     manageContainer.appendChild(mItem);
                 });
@@ -311,6 +332,39 @@
             panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
         }
 
+        // Включение режима редактирования
+        function startEdit(index) {
+            editIndex = index;
+            const post = localPostsArray[index];
+            
+            // Заполняем поля формы данными выбранного поста
+            document.getElementById('post-title').value = post.title || '';
+            document.getElementById('post-date').value = post.date || '';
+            document.getElementById('post-img').value = post.img || '';
+            document.getElementById('post-text').value = post.text || '';
+            
+            // Меняем заголовки и кнопки интерфейса на режим редактирования
+            document.getElementById('form-mode-title').innerText = `[ Редактирование поста #${index + 1} ]`;
+            document.getElementById('save-btn').innerText = 'Сохранить изменения';
+            document.getElementById('cancel-edit-header-btn').style.display = 'inline-block';
+            
+            // Скроллим форму вверх на мобилках
+            document.querySelector('.admin-form').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Сброс формы в режим создания нового поста
+        function resetForm() {
+            editIndex = null;
+            document.getElementById('post-title').value = '';
+            document.getElementById('post-date').value = '';
+            document.getElementById('post-img').value = '';
+            document.getElementById('post-text').value = '';
+            
+            document.getElementById('form-mode-title').innerText = '[ Добавить в архив ]';
+            document.getElementById('save-btn').innerText = 'Опубликовать';
+            document.getElementById('cancel-edit-header-btn').style.display = 'none';
+        }
+
         // Общая функция отправки обновленного массива на GitHub
         async function pushToGitHub(token, updatedArray, commitMessage) {
             const url = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${FILE_PATH}`;
@@ -324,7 +378,7 @@
                 const getData = await getRes.json();
                 sha = getData.sha;
             } else {
-                throw new Error('Не удалось получить актуальную версию файла с GitHub.');
+                throw new Error('Не удалось синхронизировать версию с GitHub.');
             }
 
             const updatedContent = btoa(unescape(encodeURIComponent(JSON.stringify(updatedArray, null, 2))));
@@ -345,7 +399,7 @@
             return putRes.ok;
         }
 
-        // Публикация нового материала
+        // Сохранение материала (И создание нового, и изменение старого)
         async function savePost() {
             const token = document.getElementById('gh-token').value;
             const title = document.getElementById('post-title').value;
@@ -359,21 +413,29 @@
             }
 
             btn.disabled = true;
-            btn.innerText = 'Отправка данных...';
+            btn.innerText = 'Сохранение...';
 
             try {
-                // Создаем копию текущего массива и добавляем элемент наверх
-                const newPost = { title, date, img, text };
-                const nextPosts = [newPost, ...localPostsArray];
+                let nextPosts = [];
+                let commitMsg = '';
 
-                const success = await pushToGitHub(token, nextPosts, `Archive Add: ${title}`);
+                if (editIndex !== null) {
+                    // Режим РЕДАКТИРОВАНИЯ: меняем данные конкретного элемента в массиве
+                    nextPosts = [...localPostsArray];
+                    nextPosts[editIndex] = { title, date, img, text };
+                    commitMsg = `Archive Edit: ${title}`;
+                } else {
+                    // Режим СОЗДАНИЯ нового поста: пушим на самый верх
+                    const newPost = { title, date, img, text };
+                    nextPosts = [newPost, ...localPostsArray];
+                    commitMsg = `Archive Add: ${title}`;
+                }
+
+                const success = await pushToGitHub(token, nextPosts, commitMsg);
 
                 if (success) {
-                    alert('Успешно добавлено! Лента обновится в течение минуты.');
-                    document.getElementById('post-title').value = '';
-                    document.getElementById('post-date').value = '';
-                    document.getElementById('post-img').value = '';
-                    document.getElementById('post-text').value = '';
+                    alert('Успешно сохранено! Изменения отобразятся на сайте в течение минуты.');
+                    resetForm();
                     loadPosts();
                 } else {
                     alert('Ошибка прав доступа. Проверьте токен GitHub.');
@@ -383,7 +445,7 @@
                 console.error(err);
             } finally {
                 btn.disabled = false;
-                btn.innerText = 'Опубликовать';
+                btn.innerText = editIndex !== null ? 'Сохранить изменения' : 'Опубликовать';
             }
         }
 
@@ -392,16 +454,15 @@
             const token = prompt('Для подтверждения удаления введите ваш GitHub токен:');
             if (!token) return;
 
-            if (!confirm(`Вы уверены, что хотите удалить пост "${localPostsArray[index].title}"?`)) return;
+            if (!confirm(`Вы уверены, что хотите полностью удалить пост "${localPostsArray[index].title}"?`)) return;
 
             try {
-                // Создаем копию массива без удаляемого элемента
                 const nextPosts = localPostsArray.filter((_, i) => i !== index);
-
-                const success = await pushToGitHub(token, nextPosts, `Archive Delete: element index ${index}`);
+                const success = await pushToGitHub(token, nextPosts, `Archive Delete: index ${index}`);
 
                 if (success) {
-                    alert('Пост успешно удален! Изменения вступят в силу в течение минуты.');
+                    alert('Пост удален! Изменения обновятся в течение минуты.');
+                    if (editIndex === index) resetForm(); // Если удалили то, что редактировали — сбрасываем форму
                     loadPosts();
                 } else {
                     alert('Ошибка удаления. Проверьте токен.');
