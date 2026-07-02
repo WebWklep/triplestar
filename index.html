@@ -267,7 +267,7 @@
         <div class="admin-layout">
             <div class="admin-form">
                 <h3 id="form-mode-title">[ Append to Archive ]</h3>
-                <input type="password" id="gh-token" placeholder="GitHub Personal Access Token">
+                <input type="password" id="gh-token" placeholder="GitHub Personal Access Token" oninput="updateTokenFromInput(this.value)">
                 <input type="text" id="post-title" placeholder="TITLE (e.g. SERIES 01: BIO POP)">
                 <input type="text" id="post-date" placeholder="DATE & STATUS (e.g. THE ORIGIN, 2025)">
                 <input type="text" id="post-img" placeholder="Image asset filename (e.g. asset.png)">
@@ -311,12 +311,19 @@
             }));
         }
 
+        // Следит за вводом токена и мгновенно перезапускает загрузку
+        function updateTokenFromInput(val) {
+            globalToken = val.trim();
+            if (globalToken.length > 10) { 
+                loadPosts();
+            }
+        }
+
         async function loadPosts() {
             const listContainer = document.getElementById('articles-list');
             const manageContainer = document.getElementById('manage-list');
             
             try {
-                // Принудительно гасим кэш гитхаба с помощью уникального таймштампа
                 let url = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${FILE_PATH}?t=${Date.now()}`;
                 let headers = { 'Cache-Control': 'no-cache' };
                 
@@ -326,12 +333,6 @@
 
                 let response = await fetch(url, { headers });
                 
-                if (response.status === 404 && !globalToken) {
-                    listContainer.innerHTML = '<p style="font-size:12px; color:#999; text-align:center; margin-top:40px;">Repository endpoint pending validation. Click "admin login" below to initiate context mapping.</p>';
-                    manageContainer.innerHTML = '<p style="font-size:11px; color:#999;">Awaiting credentials.</p>';
-                    return;
-                }
-
                 if (!response.ok) {
                     throw new Error(`HTTP Error Status: ${response.status}`);
                 }
@@ -371,7 +372,7 @@
                 }
 
                 if (localPostsArray.length === 0) {
-                    manageContainer.innerHTML = '<p style="font-size:11px; color:#999;">No entries found.</p>';
+                    manageContainer.innerHTML = '<p style="font-size:11px; color:#999;">[ Registry Connected: Dataset is Empty ]</p>';
                     return;
                 }
 
@@ -397,8 +398,8 @@
             } catch (err) {
                 listContainer.innerHTML = `<p style="font-size:12px; color:red; text-align:center; margin-top:40px;">
                     [SYSTEM SYNC FAILURE]<br><br>
-                    Trace: ${err.message}<br><br>
-                    Open "admin login" to refresh state.
+                    Trace: Access key signature missing or invalid.<br><br>
+                    Open "admin login" and insert GitHub Token footprint.
                 </p>`;
                 manageContainer.innerHTML = '<p style="font-size:11px; color:red;">Sync failed.</p>';
             }
